@@ -1,11 +1,11 @@
 #include "math_utils.h"
 
-/*int add(int a, int b) {
+int add(int a, int b) {
     return a + b;
-}*/
-int add(int a) {
-    return a;
 }
+/*int add(int a) {
+    return a;
+}*/
 
 int factorial(int n) {
     int num = 1;
