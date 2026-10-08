@@ -1,0 +1,17 @@
+# 统一换行符，避免每次提交都刷一屏 "LF will be replaced by CRLF" 警告
+* text=auto
+
+# Windows 批处理必须是 CRLF，否则某些情况下会执行异常
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# 源码和文档统一 LF
+*.cpp  text eol=lf
+*.h    text eol=lf
+*.hpp  text eol=lf
+*.md   text eol=lf
+*.txt  text eol=lf
+
+# 二进制
+*.png binary
+*.jpg binary

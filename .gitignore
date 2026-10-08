@@ -1,0 +1,31 @@
+# ===== 构建产物 =====
+build/
+out/
+*.obj
+*.exe
+*.lib
+*.dll
+*.exp
+*.pdb
+*.ilk
+
+# 编译中间产物（第 1 周练习会大量产生，不要提交）
+*.i
+*.asm
+*.s
+*.o
+*.a
+
+# ===== IDE =====
+.vs/
+.vscode/
+*.user
+*.suo
+.vsconfig
+
+# ===== 临时文件 =====
+*.tmp
+*.log
+~$*
+.grade-*/
+scratch/
