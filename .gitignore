@@ -19,6 +19,7 @@ out/
 # ===== IDE =====
 .vs/
 .vscode/
+.idea/
 *.user
 *.suo
 .vsconfig
@@ -26,7 +27,7 @@ out/
 # ===== 临时文件 =====
 *.tmp
 *.log
-out.txt
+out*.txt
 ~$*
 .grade-*/
 scratch/
