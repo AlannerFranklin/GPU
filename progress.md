@@ -35,8 +35,8 @@
 - [x] 能解释 `std::move` 到底做了什么
 
 ### 第 4 周 · 模板与 STL
-- [ ] 手写 `MyVector<T>`
-- [ ] 手写 `unique_ptr` / `shared_ptr`
+- [x] 手写 `MyVector<T>`
+- [x] 手写 `unique_ptr` / `shared_ptr`
 
 ### 🔍 M1 月末自检
 - [ ] **闭卷 2 小时，从空白文件写出 `MyVector<T>`，无内存泄漏**
