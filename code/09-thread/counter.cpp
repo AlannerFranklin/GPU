@@ -13,11 +13,11 @@ class SpinLock {
 
 SpinLock g_lock;
 void SpinLock::lock() {
-    while (flag.exchange(true)) {}
+    while (flag.exchange(true, std::memory_order_acquire)) {}
 }
 
 void SpinLock::unlock() {
-    flag.store(false);
+    flag.store(false, std::memory_order_release);
 }
 
 long long counter = 0;

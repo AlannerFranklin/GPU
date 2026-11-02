@@ -52,8 +52,8 @@
 ### 第 7 周 · 并发
 - [x] 用 `std::thread` 并行归约（1e8 分块求和，实测受限于单通道内存带宽，8 线程 2.1x）
 - [x] 自旋锁（手写 `std::atomic<bool>` + `exchange` 自旋，先看到丢失更新再修好）
-- [ ] 无锁 SPSC 队列
-- [ ] 能解释 4 种内存序
+- [x] 无锁 SPSC 队列（环形缓冲区 + 两个 `std::atomic<size_t>`，10 万次推取零丢失零乱序）
+- [x] 能解释 4 种内存序（relaxed / acquire / release / seq_cst，并会用它们配 SPSC 队列和自旋锁）
 
 ### 第 8 周 · 项目一：线程池
 - [ ] 线程池完成，含任务队列 + future + 优雅关闭
