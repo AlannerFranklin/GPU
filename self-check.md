@@ -783,3 +783,224 @@ r = y;             r2 = x;
 5. **伪共享对比实验** —— 第 5 题，顺便验证 W07 归约的 2.1x 里有没有伪共享的成分
 
 **这五个实验都能在 CUDA 之前做完，不需要新环境。**
+
+---
+
+# 2026-11-03 · 第二轮：五个实验验证
+
+> 第一轮五题全 ❌，随后用五个动手实验逐一验证。
+> **实验只能证明「事实是什么」，不能证明「你能脱离资料讲清楚」** —— 但它把每个结论变成了亲眼见过的东西。
+
+## 实验总表
+
+| # | 对应题 | 实验 | 关键结果 |
+|---|---|---|---|
+| 1 | 第 1 题 | `dumpbin` 符号表 + 故意制造 LNK2019 | 2 个 `UNDEF` 精确对应 2 个链接错误 |
+| 2 | 第 2 题 | `sizeof` 三种声明 | `8 / 8 / 40`，`*b` = 20 |
+| 3 | 第 3 题 | `std::move` 地址对比 | `p1 == p2`、`a` 空；换成拷贝则 `same=0` |
+| 4 | 第 4 题 | `-FA` 看原子操作汇编 | 只有 `seq_cst` store 是 `xchg`，其余全是 `mov` |
+| 5 | 第 5 题 | 伪共享对比（`alignas(64)`） | **5.70x** |
+
+---
+
+## 实验 1：符号表与链接（对应第 1 题）
+
+### `main.obj` 的 UNDEF
+
+```
+013 00000000 UNDEF  notype ()    External     | __acrt_iob_func
+014 00000000 UNDEF  notype ()    External     | __stdio_common_vfprintf
+017 00000000 UNDEF  notype ()    External     | ?add@@YAHHH@Z (int __cdecl add(int,int))
+018 00000000 UNDEF  notype ()    External     | ?factorial@@YAHH@Z (int __cdecl factorial(int))
+```
+
+### 同一个符号，两种身份
+
+```
+main.obj         017 ... UNDEF   | ?add@@YAHHH@Z     ← 「我要，我没有」
+math_utils.obj   008 ... SECT3   | ?add@@YAHHH@Z     ← 「我有，在第 3 节区」
+```
+
+`SECT3` = 已定义（符号有实体，躺在某个节区里）；`UNDEF` = 未定义（只有名字，地址为 0）。
+
+### `main` 本身
+
+```
+019 00000000 SECT4  notype ()  External  | main          ← main，已定义
+02B 00000000 SECTC  notype     Static    | $unwind$main  ← 栈展开元数据
+02E 00000000 SECTD  notype     Static    | $pdata$main   ← 异常处理元数据
+```
+
+**`Static` 的符号链接器不管**，只有 `External` 才参与对账。`$pdata$` / `$unwind$` 是 x64 的 SEH 元数据，不是你的函数。
+
+### 故意制造链接错误
+
+`cl main.cpp`（不带 `math_utils.cpp`）：
+
+```
+main.obj : error LNK2019: 无法解析的外部符号 "int __cdecl add(int,int)" (?add@@YAHHH@Z)
+main.obj : error LNK2019: 无法解析的外部符号 "int __cdecl factorial(int)" (?factorial@@YAHH@Z)
+app_broken.exe : fatal error LNK1120: 2 个无法解析的外部命令
+```
+
+**为什么只报 2 个而不是 4 个**：另外两个 `__acrt_iob_func` / `__stdio_common_vfprintf` 由 `cl` 自动链接的 CRT 库（`libucrt.lib`）提供了。
+
+> **`.lib` 就是一堆 `.obj` 的打包**，里面的符号表和 `.obj` 是同一种格式。
+
+---
+
+## 实验 2：`sizeof`（对应第 2 题）
+
+```cpp
+int** a;  int (*b)[5];  int *c[5];
+```
+
+```
+sizeof(a)=8      sizeof(b)=8      sizeof(c)=40
+sizeof(*a)=8     sizeof(*b)=20    sizeof(c[0])=8
+```
+
+### 九个表达式里七个是 8
+
+| 表达式 | 类型 | `sizeof` |
+|---|---|---|
+| `a` | `int**` | 8 |
+| `*a` | `int*` | 8 |
+| `&a` | `int***` | 8 |
+| `b` | `int (*)[5]` | 8 |
+| **`*b`** | **`int[5]`** | **20** |
+| `&b` | `int (**)[5]` | 8 |
+| **`c`** | **`int*[5]`** | **40** |
+| `c[0]` | `int*` | 8 |
+| `&c` | `int* (*)[5]` | 8 |
+
+**只有 `*b`（20）和 `c`（40）能暴露区别，其余全是 8。**
+
+### 踩到的坑
+
+- **`&` 和 `*` 搞混**：写了 `sizeof(&a)` 而不是 `sizeof(*a)`。`&x` 是「x 自己在哪」，永远是指针，永远 8 字节 —— **`sizeof(&任何东西)` 恒等于 8，什么信息都测不出来**。
+- **标签和表达式对不上**：`printf("sizeof(a)=%zu", sizeof(&a))` —— 标签写 `a`，测的是 `&a`。回头看输出会被自己骗。
+- **数字对上不等于表达式写对**：`&a` 和 `*a` 都是 8，纯属巧合（`int***` 和 `int*` 都是指针）。
+
+---
+
+## 实验 3：`std::move`（对应第 3 题）
+
+```cpp
+std::string a = "hello, this is a long string";   // 28 字符，超过 SSO 的 15
+const char* p1 = a.data();
+std::string b = std::move(a);
+const char* p2 = b.data();
+```
+
+### 移动 vs 拷贝
+
+| | `std::move(a)` | `a`（拷贝） |
+|---|---|---|
+| `p1 == p2` | **`same=1`** | `same=0` |
+| `a` | `[]` size=0 | 完整，size=28 |
+| `b` | 完整，size=28 | 完整，size=28 |
+
+**移动：接管同一块内存，源被掏空。拷贝：新分配一块，源完好。**
+
+### 实测前的预测（全错）
+
+> 预测：「p1 和 p2 地址不同，a 的内容不变」—— 三项里错两项，正好把「移动」预测成了「拷贝」。
+
+这和第 3 题原答案「转换为**可拷贝**的对象」的误解一致。**实验当场证伪。**
+
+### 两个坑
+
+- **`printf("%s", a)`** → 警告 C4477/C4840。`%s` 要 `const char*`，`std::string` 必须 `.c_str()`。可变参数函数会把整个 32 字节对象原样塞进去，`%s` 把头 8 字节当指针 → 野指针。
+- **SSO**：15 字符以内的字符串**内联存在对象里**，不分配堆。那种情况下移动也只是复制内联缓冲，`p1 != p2`。实验用 28 字符避开了。
+
+---
+
+## 实验 4：内存序的汇编证据（对应第 4 题）
+
+```
+store_relaxed : mov  DWORD PTR g_relaxed, ecx
+store_release : mov  DWORD PTR g_release, ecx      ← 和 relaxed 一字不差
+store_seqcst  : xchg DWORD PTR g_seqcst,  ecx      ← 唯一不同的
+load_relaxed  : mov  eax, DWORD PTR g_relaxed
+load_acquire  : mov  eax, DWORD PTR g_release      ← 和 relaxed 一字不差
+load_seqcst   : mov  eax, DWORD PTR g_seqcst       ← 和 relaxed 一字不差
+```
+
+**六个函数里五个的汇编完全相同。`release` / `acquire` 在 x86 上零指令成本。**
+
+### 为什么
+
+x86 是 TSO，硬件已禁止 load→load、load→store、store→store 三种重排，**只允许 store→load**。
+
+- `release` 管 store→store → 硬件已禁 → 只需编译器屏障 → `mov`
+- `acquire` 管 load→load/load→store → 硬件已禁 → `mov`
+- `seq_cst` 还要禁 **store→load** → 硬件允许 → **必须 `xchg`（隐含 lock 前缀）**
+
+### 但别把「免费」当规律
+
+`load_seqcst` 在 x86 上也是 `mov`，是因为 **x86 硬件顺带保证了 load 这一侧**。换到 ARM64，`seq_cst` load 需要 `dmb ish`。
+
+### 最深的那个点
+
+`release` 和 `relaxed` 生成的指令**逐字相同**，区别不在指令，在**编译器被允许做什么**：
+
+```cpp
+buf[h] = v;                                    // ①
+head.store(next, std::memory_order_release);   // ②
+```
+
+用 `release`，编译器**必须**保证 ① 在 ② 之前；用 `relaxed`，编译器**可以把 ② 挪到 ① 前面**。
+
+> **在 x86 上，`release`/`acquire` 不花指令，花的是「编译器的自由度」。`seq_cst` 才真的花指令。**
+
+---
+
+## 实验 5：伪共享（对应第 5 题）
+
+```cpp
+alignas(64) std::atomic<long long> g_near[4];     // 4 个挤在一条 line
+
+struct alignas(64) Padded { std::atomic<long long> v; };
+Padded g_far[4];                                  // 每个独占一条 line
+```
+
+每个线程对**自己的**计数器做 200 万次 `fetch_add`。
+
+```
+紧挨着 :   100.801 ms      每次 ≈ 50.4 ns ≈ 222 周期
+对齐填充:    17.699 ms      每次 ≈  8.85 ns ≈  39 周期
+伪共享代价: 5.70x
+check: 1999999000000 1999999000000   一致
+```
+
+- **39 周期** = `lock xadd` 在私有 line 上的固有成本，躲不掉
+- **多出的 183 周期** = 4 个核心抢同一条 line 的钱（Invalidate → 传输 → 独占）
+- 修复的代价：每个计数器多占 56 字节
+
+### 这个实验改了三次，两次失败都不是代码写错
+
+| 尝试 | 结果 | 原因 |
+|---|---|---|
+| 1 | 1.01x | `g_far` 没填充，两版完全相同（**自己发现的**） |
+| 2 | 1.33x | 纯 `store` 被 **store buffer 吸收**，根本没走到一致性协议 |
+| 3 | **5.70x** | `fetch_add` → `lock xadd`，`lock` 前缀强迫拿到独占权 |
+
+> **数字小 ≠ 测对了。** benchmark 可能正在测 store buffer 的吞吐，而不是你以为的 cache 一致性。
+> 第三次的 0.4 ns/次 就是警报：快得不合理，说明那条硬件路径没被走到。
+
+---
+
+## 第二轮结论
+
+| # | 题目 | 第一轮 | 实验验证 |
+|---|---|---|---|
+| 1 | 源码 → 可执行文件链路 | ❌ | ✅ 实验 1 |
+| 2 | 三种指针/数组声明 | ❌ | ✅ 实验 2 |
+| 3 | `std::move` | ❌ | ✅ 实验 3 |
+| 4 | 四种内存序 | ❌ | ✅ 实验 4 |
+| 5 | cache line / 伪共享 / 内存序由来 | ❌ | ✅ 实验 5 |
+
+**实验证明的是「事实是什么」。真正的验收标准仍是能脱离资料讲清楚机制。**
+
+**下一步建议**：过一两周，不看本文件，口头复述第 1、3、4 题各自的机制。能讲通，才算真掌握。
