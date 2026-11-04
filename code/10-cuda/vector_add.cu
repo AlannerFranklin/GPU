@@ -2,16 +2,17 @@
 #include <cuda_runtime.h>
 #include <cstdlib>
 
-#define CUDA_CHECK(call) \
-    do {\
-        cudaError_t err_ = (call);\
-        if(err_ != cudaSuccess) {\
-            printf("[CUDA error] %s:%d\n    %s(code=%d)\n",\
-            __FILE__, __LINE__,\
-            cudaGetErrorString(err_), (int)err_);\
-            exit(1);\
-        }\
-    } while(0)
+#define CUDA_CHECK(call)                                        \
+    do {                                                        \
+        cudaError_t err_ = (call);                              \
+        if (err_ != cudaSuccess) {                              \
+            printf("[CUDA error] %s:%d\n  %s (code=%d)\n",      \
+                   __FILE__, __LINE__,                          \
+                   cudaGetErrorString(err_), (int)err_);        \
+            exit(1);                                            \
+        }                                                       \
+    } while (0)
+
 
 __global__ void vector_add(int* a, int* b, int* c, int n) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
