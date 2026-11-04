@@ -16,6 +16,11 @@ out/
 *.o
 *.a
 
+# CUDA 编译中间产物
+*.ptx
+*.cubin
+*.fatbin
+
 # ===== IDE =====
 .vs/
 .vscode/
