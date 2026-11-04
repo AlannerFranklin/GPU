@@ -68,10 +68,10 @@
 ## 阶段二：GPU 编程入门（第 3-4 月）
 
 ### 第 9 周 · 第一个 kernel
-- [ ] `01-hello-sycl` 在 UHD 730 上跑通（看到 `[OK] 已选中 GPU`）
-- [ ] CUDA `vector_add` 在 4070 Ti Super 上跑通
-- [ ] 写了 `CUDA_CHECK` 宏
-- [ ] 记录了核显和独显的耗时：核显 ______ ms / 独显 ______ ms
+- [ ] `01-hello-sycl` 在 UHD 730 上跑通（看到 `[OK] 已选中 GPU`）—— ⚠️ 公司机器无 GPU，待确认砍掉还是周末在家补
+- [x] CUDA `vector_add` 在 4070 Ti Super 上跑通 —— 2026-11-04 晚验证，输出 c[i]=3i 正确
+- [x] 写了 `CUDA_CHECK` 宏 —— 2026-11-04 晚随 vector_add 编译运行验证
+- [ ] 记录了核显和独显的耗时 —— 改为给 vector_add 加 cudaEvent 计时（下个练习，白天写晚上跑）
 
 ### 第 10 周 · 访存模式
 - [ ] 写了步长 1 vs 步长 stride 的对比版本
