@@ -14,7 +14,7 @@
 | 谁负责 | 公司电脑上的 AI | 本仓库上的 AI（这台） |
 | GPU | **无**（不能运行 CUDA） | RTX 4070 Ti Super（sm_89, 16GB） |
 | CUDA Toolkit | 13.4（只能做编译检查） | **12.6**（真正执行） |
-| 编译器 | VS 2026（MSVC 14.51） | VS 2022 Build Tools（E:\BuildTools，MSVC 19.44） |
+| 编译器 | VS 2026（MSVC 14.51，`_MSC_VER` 1951） | VS 2022 Build Tools（E:\BuildTools，MSVC 14.44，`_MSC_VER` 1944） |
 | 职责 | 学习、写代码、写 day.md | 编译、运行、测性能、写 night.md |
 
 > ⚠️ 家里还装着 VS 2026（D:\cuda），但 nvcc 12.6 不支持它的 MSVC（报 unsupported compiler），

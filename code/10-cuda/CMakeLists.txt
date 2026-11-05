@@ -16,9 +16,12 @@ set(CMAKE_CUDA_ARCHITECTURES 89)
 
 # 中文注释：MSVC 默认按 GBK 读源文件，/utf-8 防乱码（项目约定，见 SETUP.md）
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /utf-8")
-# nvcc 12.6 官方支持的 MSVC 上限较低；Build Tools 装的 MSVC 更新时
-# nvcc 会报 unsupported compiler，此开关放行（对受支持版本无影响）。
+# 注意：不要加 -allow-unsupported-compiler。
+# E:\BuildTools 的 MSVC 14.44（_MSC_VER 1944）本就在 nvcc 12.6 支持范围内
+# （它拒绝的是 _MSC_VER >= 1950，即 VS 2026）。若某天 E:\BuildTools 丢失，
+# build.bat 会回退到 VS 2026 —— 我们要 nvcc 当场 #error 炸掉，
+# 而不是被这个开关放行、用未验证的 MSVC 编出可能有问题的二进制。
 # -Xcompiler 把 /utf-8 传给 MSVC 宿主编译器。
-set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -allow-unsupported-compiler -Xcompiler=\"/utf-8\"")
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler=\"/utf-8\"")
 
 add_executable(vector_add vector_add.cu)

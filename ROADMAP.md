@@ -451,7 +451,7 @@
 ### 砍掉的内容
 
 门 B 全部选修在 7 月期限下不碰：CUTLASS、手写 GEMM（cuBLAS 70%）、FlashAttention、
-Triton、量化、PyTorch 算子库。**第 16 周分叉决策时直接选门 A。**
+Triton、量化、PyTorch 算子库。**12 月最后一周的分叉决策直接选门 A。**
 （若届时强烈倾向门 B，先回来修改本章再决定。）
 
 ### 目标分层
