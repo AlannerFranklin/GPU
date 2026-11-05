@@ -79,6 +79,15 @@ int main() {
 
 __global__ void vector_add(int* a, int *b, int* c, int n) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (i < n) {
+        c[i] = a[i] + b[i];
+    }
+}
+
+__global__ void vector_add_strided(int* a, int* b, int* c, int n) {
+    int i = threadIdx.x * gridDim.x + blockIdx.x;
+
     if (i < n) {
         c[i] = a[i] + b[i];
     }
@@ -110,7 +119,8 @@ int main() {
     CUDA_CHECK(cudaMemcpy(a_d, a_h, N * sizeof(int), cudaMemcpyHostToDevice));
     CUDA_CHECK(cudaMemcpy(b_d, b_h, N * sizeof(int), cudaMemcpyHostToDevice));
 
-    float min_time = 1e12f;
+    float vector_add_min_time = 1e12f;
+    float vector_add_strided_min_time = 1e12f;
     float ms = 0;
 
     for (int rep = 0;rep < 4;rep++) {
@@ -133,13 +143,36 @@ int main() {
 
             
             CUDA_CHECK(cudaEventElapsedTime(&ms, start, stop));
-            min_time = std::min(ms, min_time);
+            vector_add_min_time = std::min(ms, vector_add_min_time);
             
-            printf("rep=%d, ms=%.6f\n", rep, ms);
+            printf("vector_add : rep=%d, ms=%.6f\n", rep, ms);
+        }
+        if (rep == 0) {
+            vector_add_strided<<<grid, block>>>(a_d, b_d, c_d, N);
+            CUDA_CHECK(cudaGetLastError());
+        } else {
+            CUDA_CHECK(cudaEventRecord(start));
+    
+            vector_add_strided<<<grid, block>>>(a_d, b_d, c_d, N);
+
+            CUDA_CHECK(cudaEventRecord(stop));
+
+            CUDA_CHECK(cudaGetLastError());
+            //CUDA_CHECK(cudaDeviceSynchronize());
+            
+            CUDA_CHECK(cudaEventSynchronize(stop));
+
+            
+            CUDA_CHECK(cudaEventElapsedTime(&ms, start, stop));
+            vector_add_strided_min_time = std::min(ms, vector_add_strided_min_time);
+            
+            printf("vector_add_strided : rep=%d, ms=%.6f\n", rep, ms);
         }
     }
-    printf("min_time=%.6f\n", min_time);
-    
+    printf("vector_add_strided_min_time=%.6f, vector_add_min_time=%.6f\n", vector_add_strided_min_time, vector_add_min_time);
+    float ratio = vector_add_strided_min_time / vector_add_min_time;
+    printf("ratio=%.6f\n", ratio);
+
     CUDA_CHECK(cudaEventDestroy(start));
     CUDA_CHECK(cudaEventDestroy(stop));
 
