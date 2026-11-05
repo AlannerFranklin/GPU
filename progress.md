@@ -95,12 +95,12 @@
 - [ ] `01-hello-sycl` 在 UHD 730 上跑通（看到 `[OK] 已选中 GPU`）—— ⚠️ 公司机器无 GPU，待确认砍掉还是周末在家补
 - [x] CUDA `vector_add` 在 4070 Ti Super 上跑通 —— 2026-11-04 晚验证，输出 c[i]=3i 正确
 - [x] 写了 `CUDA_CHECK` 宏 —— 2026-11-04 晚随 vector_add 编译运行验证
-- [ ] 记录了核显和独显的耗时 —— 改为给 vector_add 加 cudaEvent 计时（下个练习，白天写晚上跑）
+- [x] 记录了耗时 —— 2026-11-05 晚：vector_add min 0.006880 ms（1744 GB/s，L2 带宽）；核显不可用（公司无 GPU）
 
 ### 第 10 周 · 访存模式
-- [ ] 写了步长 1 vs 步长 stride 的对比版本
-- [ ] 用 ncu 看到了 `gld_efficiency` 100% vs ____%
-- [ ] 写了对比报告
+- [x] 写了步长 1 vs 步长 stride 的对比版本 —— 2026-11-05 晚实测 ratio=11.31（合并 0.0069ms/1744GB/s vs 散开 0.0778ms/154GB/s）
+- [ ] 用 ncu 看到了 `gld_efficiency` 100% vs ____%（ncu 2024.3.1 已装可用；nsys 未装，第 12 周前补）
+- [ ] 写了对比报告（数据已在 night.md，正式报告随第 12 周 profiling 一起出）
 
 ### 第 11 周 · Shared Memory
 - [ ] matmul naive 版，性能 ______ GFLOPs
