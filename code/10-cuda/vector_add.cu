@@ -96,6 +96,11 @@ __global__ void vector_add_strided(int* a, int* b, int* c, int n) {
 int main() {
     const int N = 1000000;
     int block = 256;
+
+    cudaDeviceProp prop;
+    CUDA_CHECK(cudaGetDeviceProperties(&prop, 0));
+    printf("%s\n", prop.name);
+    printf("L2 = %.1f MB\n", prop.l2CacheSize / 1048576.0);
     int* a_h = new int[N];
     int* b_h = new int[N];
     int* c_h = new int[N];
@@ -122,6 +127,7 @@ int main() {
     float vector_add_min_time = 1e12f;
     float vector_add_strided_min_time = 1e12f;
     float ms = 0;
+    const double total_bytes = 3.0 * N * sizeof(int);
 
     for (int rep = 0;rep < 4;rep++) {
         
@@ -146,6 +152,8 @@ int main() {
             vector_add_min_time = std::min(ms, vector_add_min_time);
             
             printf("vector_add : rep=%d, ms=%.6f\n", rep, ms);
+            printf("vector_add : bandwidth = %.1f GB/s\n", total_bytes / ms / 1e6);
+    
         }
         if (rep == 0) {
             vector_add_strided<<<grid, block>>>(a_d, b_d, c_d, N);
@@ -165,8 +173,9 @@ int main() {
             
             CUDA_CHECK(cudaEventElapsedTime(&ms, start, stop));
             vector_add_strided_min_time = std::min(ms, vector_add_strided_min_time);
-            
             printf("vector_add_strided : rep=%d, ms=%.6f\n", rep, ms);
+            printf("vector_add_strided : bandwidth = %.1f GB/s\n", total_bytes / ms / 1e6);
+
         }
     }
     printf("vector_add_strided_min_time=%.6f, vector_add_min_time=%.6f\n", vector_add_strided_min_time, vector_add_min_time);
