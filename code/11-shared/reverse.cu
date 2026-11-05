@@ -19,6 +19,7 @@ __global__ void reverse_block(int* a) {
     tile[threadIdx.x] = a[base + threadIdx.x];
     __syncthreads();
     a[base + threadIdx.x] = tile[blockDim.x - threadIdx.x - 1];
+    //a[base + threadIdx.x] = tile[threadIdx.x * 2];
 }
 
 int main() {
