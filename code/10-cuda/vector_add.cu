@@ -1,7 +1,9 @@
 #include <cstdio>
 #include <cuda_runtime.h>
 #include <cstdlib>
-/*
+#include <algorithm>
+
+#if 0
 #define CUDA_CHECK(call)                                        \
     do {                                                        \
         cudaError_t err_ = (call);                              \
@@ -62,7 +64,7 @@ int main() {
     cudaFree(c_d);
     return 0;
 }
-*/
+#endif
 
 #define CUDA_CHECK(call)                                            \
     do {                                                            \
@@ -83,7 +85,7 @@ __global__ void vector_add(int* a, int *b, int* c, int n) {
 }
 
 int main() {
-    const int N = 1000;
+    const int N = 1000000;
     int block = 256;
     int* a_h = new int[N];
     int* b_h = new int[N];
@@ -98,16 +100,53 @@ int main() {
     CUDA_CHECK(cudaMalloc((void**)&a_d, N * sizeof(int)));
     CUDA_CHECK(cudaMalloc((void**)&b_d, N * sizeof(int)));
     CUDA_CHECK(cudaMalloc((void**)&c_d, N * sizeof(int)));
+
+    cudaEvent_t start = 0;
+    cudaEvent_t stop = 0;
+    CUDA_CHECK(cudaEventCreate(&start));
+    CUDA_CHECK(cudaEventCreate(&stop));
+    
     
     CUDA_CHECK(cudaMemcpy(a_d, a_h, N * sizeof(int), cudaMemcpyHostToDevice));
     CUDA_CHECK(cudaMemcpy(b_d, b_h, N * sizeof(int), cudaMemcpyHostToDevice));
+
+    float min_time = 1e12f;
+    float ms = 0;
+
+    for (int rep = 0;rep < 4;rep++) {
+        
+        int grid = (block + N - 1) / block;
+        if (rep == 0) {
+            vector_add<<<grid, block>>>(a_d, b_d, c_d, N);
+            CUDA_CHECK(cudaGetLastError());
+        } else {
+            CUDA_CHECK(cudaEventRecord(start));
     
-    int grid = (block + N - 1) / block;
-    vector_add<<<grid, block>>>(a_d, b_d, c_d, N);
-    CUDA_CHECK(cudaGetLastError());
-    CUDA_CHECK(cudaDeviceSynchronize());
+            vector_add<<<grid, block>>>(a_d, b_d, c_d, N);
+
+            CUDA_CHECK(cudaEventRecord(stop));
+
+            CUDA_CHECK(cudaGetLastError());
+            //CUDA_CHECK(cudaDeviceSynchronize());
+            
+            CUDA_CHECK(cudaEventSynchronize(stop));
+
+            
+            CUDA_CHECK(cudaEventElapsedTime(&ms, start, stop));
+            min_time = std::min(ms, min_time);
+            
+            printf("rep=%d, ms=%.6f\n", rep, ms);
+        }
+    }
+    printf("min_time=%.6f\n", min_time);
+    
+    CUDA_CHECK(cudaEventDestroy(start));
+    CUDA_CHECK(cudaEventDestroy(stop));
+
     CUDA_CHECK(cudaMemcpy(c_h, c_d, N * sizeof(int), cudaMemcpyDeviceToHost));
     for (int i = 0; i < 5; i++) printf("c[%d] = %d\n", i, c_h[i]);
+
+    printf("%d\n", c_h[N - 1] == 3 * (N - 1));
 
     delete[] a_h;
     delete[] b_h;
