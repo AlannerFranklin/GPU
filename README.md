@@ -179,7 +179,8 @@ AutoDL / 恒源云租 A100/H100 大约 2-10 元/小时，需要时再租，不�
 **6 个月加速版**：只有在每周稳定投入 **25 小时以上** 时才可行，
 且只能走门 A。压缩方式见 `ROADMAP.md` 末尾。
 
-详细周计划见 **[ROADMAP.md](ROADMAP.md)**，环境搭建见 **[SETUP.md](SETUP.md)**。
+详细周计划见 **[ROADMAP.md](ROADMAP.md)**，环境搭建见 **[SETUP.md](SETUP.md)**，
+毕设仓库（Arctic-SeaIce-PhaseSR）的求职转化计划见 **[THESIS-PLAN.md](THESIS-PLAN.md)**。
 
 ---
 
