@@ -43,6 +43,9 @@
 | `handover/YYYY-MM-DD-day.md` | 白天 AI | 下班前 |
 | `handover/YYYY-MM-DD-night.md` | 晚上 AI | 当晚跑完代码后 |
 
+**每份交接文件标题下必须带「记录时间」行**（精确到分钟，本地时间），
+格式：`> 记录时间：YYYY-MM-DD HH:MM`。历史文件只有日期没时间，从 2026-11-07 起执行。
+
 **开工第一件事**：白天 AI 读最新 night.md；晚上 AI 读当天 day.md。
 双方都提交 git，靠 git 同步。**绝不靠口头/聊天记录传递信息。**
 
@@ -52,6 +55,8 @@
 
 ````markdown
 # 交接：白天 → 晚上 · YYYY-MM-DD
+
+> 记录时间：YYYY-MM-DD HH:MM
 
 ## 今天学了什么
 - 对应 ROADMAP 第 __ 周；核心概念 / 教材章节：__
@@ -78,6 +83,8 @@
 
 ````markdown
 # 交接：晚上 → 白天 · YYYY-MM-DD
+
+> 记录时间：YYYY-MM-DD HH:MM
 
 ## 运行结果
 | 项目 | 命令 | 结果 | 耗时 / 性能数字 |
