@@ -32,6 +32,9 @@ out/
 # Claude Code 本地配置（权限设置是每台机器自己的事）
 .claude/
 
+# Nsight Systems 安装在仓库目录里（装错了地方，但不挪了，挡掉）
+Nsight/
+
 # ===== 临时文件 =====
 *.tmp
 *.log
