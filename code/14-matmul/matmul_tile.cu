@@ -34,8 +34,8 @@ __global__ void matmul_tile(float* A, float* B, float* C, int N) {
     C[row * N + col] = sum;
 }
 
-int main() {
-    int N = 1024;
+int main(int argc, char** argv) {
+    int N = argc > 1 ? atoi(argv[1]) : 1024;
     float* a_h = new float[N * N];
     float* b_h = new float[N * N];
     float* c_h = new float[N * N];
