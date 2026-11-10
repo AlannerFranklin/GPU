@@ -99,13 +99,17 @@
 
 ### 第 10 周 · 访存模式
 - [x] 写了步长 1 vs 步长 stride 的对比版本 —— 2026-11-05 晚实测 ratio=11.31（合并 0.0069ms/1744GB/s vs 散开 0.0778ms/154GB/s）
-- [ ] 用 ncu 看到了 `gld_efficiency` 100% vs ____%（ncu 2024.3.1 已装可用；nsys 未装，第 12 周前补）
+- [ ] 用 ncu 看到了 `gld_efficiency` 100% vs ____%（ncu 2024.3.1 已装可用；nsys 2026-11-09 晚已装）
 - [ ] 写了对比报告（数据已在 night.md，正式报告随第 12 周 profiling 一起出）
 
 ### 第 11 周 · Shared Memory
-- [ ] matmul naive 版，性能 ______ GFLOPs
-- [ ] matmul tiled 版，性能 ______ GFLOPs
+- [x] matmul naive 版，性能 **2627 GFLOPs** —— 2026-11-09 晚实测 0.817ms（N=1024）。
+  首次跑为 2727 GFLOPs（0.787ms），两次差 3.7%，属正常抖动
+- [x] matmul tiled 版，性能 **3377 GFLOPs** —— 2026-11-09 晚实测 0.636ms，**1.29x**。
+  瓶颈分析见 `code/14-matmul/notes.md`：读数总量仍是 2N³，只是把 31/32 从 global
+  换成 shared；而 A+B 仅 8MB、L2 有 48MB，naive 的重复读本来就命中 L2，药效被提前兑现
 - [ ] matmul 寄存器分块版，性能 ______ GFLOPs
+  （2026-11-10 只讲了概念和 `2·TM·TN/(TM+TN)` 公式，未动手；先答 65536/80 的 occupancy 题再写）
 - [ ] SYCL 版 tiled matmul 跑通
 
 ### 第 12 周 · 性能分析
