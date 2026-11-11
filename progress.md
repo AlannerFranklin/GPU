@@ -109,7 +109,9 @@
   瓶颈分析见 `code/14-matmul/notes.md`：读数总量仍是 2N³，只是把 31/32 从 global
   换成 shared；而 A+B 仅 8MB、L2 有 48MB，naive 的重复读本来就命中 L2，药效被提前兑现
 - [ ] matmul 寄存器分块版，性能 ______ GFLOPs
-  （2026-11-10 只讲了概念和 `2·TM·TN/(TM+TN)` 公式，未动手；先答 65536/80 的 occupancy 题再写）
+  （2026-11-10 讲了概念和 `2·TM·TN/(TM+TN)` 公式；2026-11-11 通了 occupancy 七步算术，
+  定下 `block(32,8)` + 4×4 + tile 32×128，但**三层坐标映射没讲通，尚未动手写代码**。
+  明天开专题拆坐标，见 [handover/2026-11-11-day.md](handover/2026-11-11-day.md)）
 - [ ] SYCL 版 tiled matmul 跑通
 
 ### 第 12 周 · 性能分析
