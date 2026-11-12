@@ -26,3 +26,4 @@ set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler=\"/utf-8\"")
 
 add_executable(matmul matmul.cu)
 add_executable(matmul_tile matmul_tile.cu)
+add_executable(matmul_reg matmul_reg.cu)

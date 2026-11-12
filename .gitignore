@@ -43,3 +43,6 @@ out*.txt
 .grade-*/
 scratch/
 tmp_src/
+
+# 外部工具的临时输出（ACL 修复工具等），与学习无关
+acl-out/
