@@ -108,10 +108,10 @@
 - [x] matmul tiled 版，性能 **3377 GFLOPs** —— 2026-11-09 晚实测 0.636ms，**1.29x**。
   瓶颈分析见 `code/14-matmul/notes.md`：读数总量仍是 2N³，只是把 31/32 从 global
   换成 shared；而 A+B 仅 8MB、L2 有 48MB，naive 的重复读本来就命中 L2，药效被提前兑现
-- [ ] matmul 寄存器分块版，性能 ______ GFLOPs
-  （2026-11-10 讲概念和 `2·TM·TN/(TM+TN)` 公式 → 11-11 通 occupancy 七步算术、定下
-  `block(32,8)` + 4×4 + tile 32×128 → 11-12 坐标专题通关，**`matmul_reg.cu` 写完并编译通过**。
-  ⚠️ **11-12 晚忘记运行，11-13 仍未跑**。今晚必跑，见 [handover/2026-11-13-day.md](handover/2026-11-13-day.md)）
+- [x] matmul 寄存器分块版，性能 **12,630 GFLOPs（N=1024）/ 13,660 GFLOPs（N=4096）** ——
+  2026-11-14 晚实测 0.170ms / 10.06ms，**3.74x / 4.53x**（vs tiled），红线通过，
+  达到 FP32 峰值 44.1 TFLOPS 的 31%。ncu 计数器（dram__bytes / local_ld）因
+  ERR_NVGPUCTRPERM 待管理员终端补采
 - [ ] SYCL 版 tiled matmul 跑通
 
 ### 第 12 周 · 性能分析
