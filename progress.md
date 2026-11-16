@@ -110,16 +110,18 @@
   换成 shared；而 A+B 仅 8MB、L2 有 48MB，naive 的重复读本来就命中 L2，药效被提前兑现
 - [x] matmul 寄存器分块版，性能 **12,630 GFLOPs（N=1024）/ 13,660 GFLOPs（N=4096）** ——
   2026-11-14 晚实测 0.170ms / 10.06ms，**3.74x / 4.53x**（vs tiled），红线通过，
-  达到 FP32 峰值 44.1 TFLOPS 的 31%。ncu 计数器（dram__bytes / local_ld）因
-  ERR_NVGPUCTRPERM 待管理员终端补采
+  达到 FP32 峰值 44.1 TFLOPS 的 31%。ncu 计数器同晚已补采：`local_ld = 0`、
+  `dram__bytes.sum = 4.35 GB`（N=4096）
 - [ ] SYCL 版 tiled matmul 跑通
 
 ### 第 12 周 · 性能分析
-- [ ] ncu 和 nsys 都装好并能出报告
-  （nsys 2026.6.1 已验、ncu 2024.3.1 已装；ncu 采集命令 2026-11-13 已讲，待今晚实跑）
+- [x] ncu 和 nsys 都装好并能出报告
+  （nsys 2026.6.1 已验、ncu 2024.3.1 已装；ncu 2026-11-14 晚在管理员终端实跑成功，
+  `dram__bytes` / `local_ld` 两个计数器都取到）
 - [ ] 理解 Roofline 模型
   （2026-11-13 已讲完：44.1 TFLOPS / 672 GB/s / ridge 65.6 FLOP·byte⁻¹，
-  并做了 N=4096 的计算练习。**待今晚用自己的 kernel 实算一次**）
+  并做了 N=4096 的计算练习。11-14 晚已用 reg 版实测数把 AI / 带宽天花板 / 完成度
+  算了一遍（AI=31.6、21,235 GFLOPS、64%），**待他自己独立复算一遍再打勾**）
 - [ ] 三个 matmul 版本都写了瓶颈分析
   （前置：reg 版必须先跑出数字，见第 11 周那一行）
 
