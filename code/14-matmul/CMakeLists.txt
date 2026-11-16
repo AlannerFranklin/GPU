@@ -22,8 +22,10 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /utf-8")
 # build.bat 会回退到 VS 2026 —— 我们要 nvcc 当场 #error 炸掉，
 # 而不是被这个开关放行、用未验证的 MSVC 编出可能有问题的二进制。
 # -Xcompiler 把 /utf-8 传给 MSVC 宿主编译器。
-set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler=\"/utf-8\"")
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler=\"/utf-8\" -Xptxas -v")
 
 add_executable(matmul matmul.cu)
 add_executable(matmul_tile matmul_tile.cu)
 add_executable(matmul_reg matmul_reg.cu)
+add_executable(matmul_reg8 matmul_reg8.cu)
+

@@ -6,19 +6,50 @@
 
 `C = A × B`，A / B / C 均为 N×N 的 `float` 方阵。
 
+## 0. 文件结构
+
+```
+matmul_common.h     分配 / 填数 / 拷贝 / 计时 / 对拍 / 释放 —— 四个版本共用
+matmul.cu           naive kernel        + 4 行 main
+matmul_tile.cu      shared memory 版     + 4 行 main
+matmul_reg.cu       4×4 register 版      + 4 行 main
+matmul_reg8.cu      8×8 register 版      + 4 行 main
+```
+
+四个 `main` 只写一件事：把自己的 kernel 和配套的 block/grid 交给
+`run_benchmark(void (*kernel)(float*, float*, float*, int), dim3 block, dim3 grid, int N)`。
+
+**block/grid 必须跟着 kernel 一起传**，因为它们和 kernel 的下标公式是绑定的——
+`32` / `128` / `64` / `256` 这几个常数同时出现在「shared 数组形状」「块内行/列偏移」
+「grid 步进」三处，改一个必须改三个。（详见 §2.3 的坐标映射。）
+
 ## 1. 性能总表
 
 | 版本 | 每线程输出 | block | shared tile | N=1024 min_ms | N=1024 GFLOPS | N=4096 min_ms | N=4096 GFLOPS |
 |---|---|---|---|---|---|---|---|
-| `matmul`（naive） | 1 | (32,32) | 无 | 0.817344 | 2627 | 56.952831 | 2413 |
-| `matmul_tile` | 1 | (32,32) | 32×32 | 0.635904 | 3377 | 49.206272 | 2793 |
+| `matmul`（naive） | 1 | (32,32) | 无 | 0.817152 | 2628 | 58.793983 | 2338 |
+| `matmul_tile` | 1 | (32,32) | 32×32 | 0.635776 | 3377 | 45.563904 | 3016 |
 | `matmul_reg` | 4×4 | (32,8) | 32×128 | 0.169984 | 12,630 | 10.061824 | 13,660 |
+| `matmul_reg8` | 8×8 | (32,8) | 64×256 | 未测 | 未测 | 未测 | 未测 |
 
 加速比：tiled 对 naive **1.29x**（N=1024）、**1.16x**（N=4096）；reg 对 tiled **3.74x**（N=1024）、**4.53x**（N=4096）。
 
 > 计时口径：`cudaEvent`，预热 1 次 + 计时 3 次取最小值；`cudaMemcpy` 一律不进计时窗口。
-> 数据采集：naive/tiled 于 2026-11-09 / 11-10 晚，reg 于 2026-11-14 晚。
-> ncu（管理员终端）实测：`local_ld = 0` ✅、`dram__bytes.sum = 4.35 GB`（N=4096）。
+> 前三行数据来自 **2026-11-14 晚同一次运行**（同一轮实验横向比才公平；与 11-09/10 的
+> 单独测量差 3-7%，在抖动范围内）。
+> ncu（管理员终端）实测：`local_ld = 0` ✅、`dram__bytes.sum = 4.35 GB`（N=4096，reg 版）。
+
+### 资源用量（`-Xptxas -v` 实测，CUDA 13.4，仅供参考）
+
+| kernel | 寄存器/线程 | shared/block | spill | 每 SM 可开 block | occupancy |
+|---|---|---|---|---|---|
+| `matmul` | 40 | 0 | 0 | 1（1024 线程卡死） | 66.7% |
+| `matmul_tile` | 36 | 8 KB | 0 | 1（同上） | 66.7% |
+| `matmul_reg` | 48 | 20 KB | 0 | 5 | 83.3% |
+| `matmul_reg8` | 128 | 40 KB | 0 | 2 | 33.3% |
+
+> `spill = 0` 说明 `acc/a/b` 全部落在寄存器里，与 `local_ld = 0` 相互印证。
+> **occupancy 不直接决定性能**：naive 66.7% 却比 8×8 慢 5.8 倍。
 
 ## 2. 三个版本的设计
 
@@ -73,8 +104,30 @@ C 的列 = blockIdx.x × 128 + threadIdx.x + j × 32
   （行：`i + ty×4`；列：`tx + j×32`）；反推时**余数永远给「连续的那个」**
 - 行为什么嵌套、列为什么交错：列用 `tx + j*32` 而不是 `tx*4 + j`，是为了让一个 warp 的
   32 个线程落在 32 个不同 bank 上；连续写法会 4 路冲突
-- 资源：约 34 reg/thread → 256×34 = 8704 reg/block → `65536/8704 = 7`，
-  线程上限 `1536/256 = 6` → 6 block/SM → **occupancy 100%**
+- 资源（ptxas 实测，不是估算）：**48 reg/thread** → 256×48 = 12,288 reg/block →
+  `65536/12288 = 5`；线程上限 `1536/256 = 6`；shared 上限 `228/20 = 11` →
+  5 block/SM → **occupancy 83.3%**
+  （最初手算估的是 34 reg → 6 block → 100%，**估错了**。寄存器数目以 ptxas 为准。）
+
+### 2.4 8×8 register tiling
+
+同一套公式，TM = TN = 8：
+
+```
+行覆盖 = blockDim.y × TM = 8 × 8 = 64      As = [64][32]
+列覆盖 = blockDim.x × TN = 32 × 8 = 256    Bs = [32][256]
+grid  = (N/256, N/64)
+```
+
+- 每线程 64 个累加器 + `a[8]` + `b[8]` = 80 个 float；ptxas 实际给到 **128 个寄存器**，`spill = 0`
+- 每 FMA 的 load 从 0.5 降到 **0.25**（16 load 养 64 FMA）
+- occupancy 从 83% 掉到 **33%**（2 block/SM）
+- shared 40 KB/block（静态 `__shared__` 的 block 上限是 48 KB，卡在这条线下面）
+- **两个 y 偏移不一样**：`As` 用 `threadIdx.y * 8`，`Bs` 用 `threadIdx.y * 4`。
+  4×4 那版一个 `thread_row = ty*4` 两处通用，这里不行
+- 选 `block(32,8)` 而不是 `(16,16)` / `(8,32)`：warp 内 `threadIdx.y` 的取值个数
+  = `32 ÷ blockDim.x`，(32,8) 只有 1 种 → 读 `As[r][k]` 全同址 → **广播，1 笔事务**；
+  (16,16) 是 2 种 → 2 址挤同一 bank → 2 路冲突；(8,32) 是 4 路
 
 ## 3. 两条最重要的结论
 
@@ -104,14 +157,24 @@ build.bat 14-matmul run 1024
 build.bat 14-matmul run 4096
 ```
 
-`run` 会把 `build\` 下**三个 exe 依次跑一遍**（naive → tile → reg）。
-只想跑 reg 版：
+`run` 会把 `build\` 下**四个 exe 依次跑一遍**（naive → tile → reg → reg8）。
+只想跑其中一版：
 
 ```bat
-.\build\matmul_reg.exe 4096
+.\build\matmul_reg8.exe 4096
 ```
 
-N 从命令行读，缺省 1024。N 必须是 128 的倍数（`matmul_reg` 的 grid 按 /128、/32 切）。
+N 从命令行读，缺省 1024。**N 必须是 256 的倍数**（`matmul_reg8` 的 grid 按 /256、/64 切；
+另外三版的要求更松，但统一按 256 取整最省事）。
+
+想看每个 kernel 用了多少寄存器和 shared，把 `-Xptxas -v` 留在
+`CMakeLists.txt` 的 `CMAKE_CUDA_FLAGS` 里，编译时会打印：
+
+```
+ptxas info : Used 128 registers, used 1 barriers, 40960 bytes smem, ...
+```
+
+**`spill stores/loads` 必须是 0**——非 0 就说明寄存器不够，变量被赶到 local memory。
 
 ## 5. 对拍
 
@@ -142,6 +205,9 @@ register tiling 白做。
 
 - [x] `matmul_reg` 实跑并填第 1 节的空 —— 2026-11-14 完成：对拍通过、`local_ld = 0`、
       红线大胜（4.53x）。Roofline：AI=31.6 < 65.6 → memory-bound，带宽天花板完成度 64%
-- [ ] 三版各写一份瓶颈分析（第 12 周交付物）
-- [ ] 8×8 register tiling（约 80 reg/thread → 3 block/SM → occupancy 降到 50%，
-      block 形状要重设计；AI 预计翻倍到 ≈63，几乎正踩 ridge point）
+- [ ] 四版各写一份瓶颈分析（第 12 周交付物）
+      —— 前置：naive / tiled 的 `dram__bytes.sum` 还没采过
+- [x] 8×8 register tiling 写完并编译通过（2026-11-16，`spill = 0`）
+      block(32,8)、tile 64×256、128 reg/thread、occupancy 33%
+- [ ] **8×8 实跑**：对拍 → 性能。三种结果都有效（更快 / 持平 / 更慢），
+      load/FMA 从 0.5 降到 0.25，但 occupancy 从 83% 掉到 33%，谁更值钱要实测
