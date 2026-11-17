@@ -118,14 +118,16 @@
 - [x] ncu 和 nsys 都装好并能出报告
   （nsys 2026.6.1 已验、ncu 2024.3.1 已装；ncu 2026-11-14 晚在管理员终端实跑成功，
   `dram__bytes` / `local_ld` 两个计数器都取到）
-- [ ] 理解 Roofline 模型
-  （2026-11-13 已讲完：44.1 TFLOPS / 672 GB/s / ridge 65.6 FLOP·byte⁻¹，
-  并做了 N=4096 的计算练习。11-14 晚已用 reg 版实测数把 AI / 带宽天花板 / 完成度
-  算了一遍（AI=31.6、21,235 GFLOPS、64%），**待他自己独立复算一遍再打勾**）
-- [ ] 三个 matmul 版本都写了瓶颈分析
-  （前置已齐：四版 DRAM 字节数 + GFLOPS + AI 全套数据在
-  [handover/2026-11-16-night.md](handover/2026-11-16-night.md)，reg8 已跨过 ridge 进
-  compute-bound 区。学员按白天范本⑥的写法独立完成）
+- [x] 理解 Roofline 模型
+  （2026-11-13 讲完 44.1 TFLOPS / 672 GB/s / ridge 65.6 → 11-16 复算 reg 版五点 →
+  11-17 在四版分析里全部用上。**他会算了**：五步框架和「天花板取 min」都讲得通。
+  ⚠️ 但单位仍是老毛病：ms/s 混淆第 5 次（写成「60.63 秒」）、16÷9.35 算成 1.17、
+  GFLOPS 分子一度用 FLOPS。判据是「写出来 + 两端单位对齐」，见 memory）
+- [x] 三个 matmul 版本都写了瓶颈分析 → 实际写了**四个**：
+  [code/14-matmul/bottleneck.md](code/14-matmul/bottleneck.md)
+  （2026-11-17。naive / tiled / reg8 三节由学员本人写，reg 4×4 一节由 AI
+  按同一模板补齐——**那一节他还讲不利索，面试前要能自己复述**。
+  四版汇总表、naive 的三个 bullet、结尾「四版合起来看」也是 AI 补的）
 
 ### 第 13 周 · 归约与扫描
 - [ ] 归约五连全部完成，有性能曲线
