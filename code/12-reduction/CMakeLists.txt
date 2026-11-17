@@ -24,4 +24,10 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /utf-8")
 # -Xcompiler 把 /utf-8 传给 MSVC 宿主编译器。
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler=\"/utf-8\"")
 
-add_executable(reduction reduction.cu)
+add_executable(reduction_v0 reduction_v0.cu)
+add_executable(reduction_v1 reduction_v1.cu)
+add_executable(reduction_v2 reduction_v2.cu)
+add_executable(reduction_v3 reduction_v3.cu)
+add_executable(reduction_v4 reduction_v4.cu)
+add_executable(reduction_v5 reduction_v5.cu)
+add_executable(reduction_v6 reduction_v6.cu)
