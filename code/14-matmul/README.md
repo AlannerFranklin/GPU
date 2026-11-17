@@ -205,8 +205,9 @@ register tiling 白做。
 
 - [x] `matmul_reg` 实跑并填第 1 节的空 —— 2026-11-14 完成：对拍通过、`local_ld = 0`、
       红线大胜（4.53x）。Roofline：AI=31.6 < 65.6 → memory-bound，带宽天花板完成度 64%
-- [ ] 四版各写一份瓶颈分析（第 12 周交付物）
-      —— 前置：naive / tiled 的 `dram__bytes.sum` 还没采过
+- [x] 四版各写一份瓶颈分析 → **[bottleneck.md](bottleneck.md)**
+      （2026-11-16 晚采齐四个版本的 `dram__bytes`，11-17 写完四段分析。
+      四版在 Roofline 上从 AI=14.7 一路推到 115.5，8×8 是唯一越过 ridge 的）
 - [x] 8×8 register tiling 写完并编译通过（2026-11-16，`spill = 0`）
       block(32,8)、tile 64×256、128 reg/thread、occupancy 33%
 - [ ] **8×8 实跑**：对拍 → 性能。三种结果都有效（更快 / 持平 / 更慢），
