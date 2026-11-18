@@ -25,3 +25,5 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /utf-8")
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler=\"/utf-8\"")
 
 add_executable(scan_v0 scan_v0.cu)
+add_executable(scan_v1 scan_v1.cu)
+add_executable(scan_v2 scan_v2.cu)
