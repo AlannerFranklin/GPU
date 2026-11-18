@@ -156,6 +156,9 @@
       （Windows 上的难点是 nvcc/MSVC/轮子版本匹配，不是绑定代码）
 - [ ] L2 在公开模型里替换/插入一个算子 —— **必须在 PyTorch 没做好的地方**
       （融合 / 特殊 shape / attention / 量化），不是在它做好的 matmul 上硬拼
+  - [ ] 先 profile，挑**占比最大**的算子（Amdahl：占 5% 的算子快 3 倍，端到端只快 3.4%）
+  - [ ] 基线做**三层**：eager / torch.compile / 我的 kernel
+        （只赢 eager 不算数，面试一句「你怎么不 compile」就拆掉）
 - [ ] L3 ONNX → TensorRT/ONNXRuntime（**仅门 B 值得投资**）
 
 ### 🔍 M4 月末自检（决策点）

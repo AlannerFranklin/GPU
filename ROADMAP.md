@@ -260,13 +260,59 @@ c = mymod.matmul(a, b)
 
 | 方向 | 例子 | 为什么能赢 |
 |---|---|---|
-| **融合** | `Linear + bias + GELU` 融成一个 kernel | PyTorch 分三次跑，你省两次显存往返 |
+| **融合** | `Linear + bias + GELU` 融成一个 kernel | eager 分三次跑、两次显存往返。**⚠️ 但 torch.compile 也能自动融合——只赢 eager 不算数，见下面细节 ①** |
 | **特殊 shape** | `M=1` 的 GEMV、极瘦长矩阵 | cuBLAS 的大矩阵 kernel 在这些 shape 下效率低 |
-| **attention** | FlashAttention | **最好的范例**——它就是对 PyTorch 原生 attention 的替换 |
+| **attention** | FlashAttention | **最好的范例**——它就是对 PyTorch 原生 attention 的替换（compile 做不了跨 reduction 的融合） |
 | **量化算子** | int8 / fp8 GEMM | PyTorch 覆盖面不全 |
 
-**面试会问「你怎么决定优化哪个算子」**，标准答案是：先 profile，看时间花在哪、
-PyTorch 在那一层效率如何——不是凭感觉挑一个自己会写的。
+#### ⚠️ 细节 ①：基线必须是三层，不是两层
+
+**`torch.compile`（Inductor）在 2026 年已经能自动融合逐元素算子。**
+如果你只对比「eager PyTorch vs 我的 fused kernel」，面试官一句话就拆掉：
+**「那你怎么不 compile？」**
+
+正确做法是三层对比：
+
+| 版本 | 延迟 | 相对 eager |
+|---|---|---|
+| eager（3 次 launch） | ___ ms | 1.00x |
+| **torch.compile（自动融合）** | ___ ms | ___x |
+| **你的手写 fused kernel** | ___ ms | ___x |
+
+**然后必须说清「你在什么情况下赢」：**
+
+- **动态 shape** → Inductor 反复重编译，撞到 recompile limit 后会退回 eager
+- **模型里有自定义 op 或控制流** → Inductor 无法融合
+- **跨 reduction 的融合**（attention、softmax+layernorm）→ Inductor 的逐元素融合覆盖不到
+- **特定 dtype / 布局**（int8、特殊 stride）→ codegen 不一定最优
+- **需要用 shared memory 手工调度**的场景
+
+> **「我在 torch.compile 也不行的场景下更快」才站得住。**
+> 「我比 eager 快」在 2026 年不构成任何证据。
+
+#### ⚠️ 细节 ②：Amdahl 定律——必须选「占时间大头」的算子
+
+如果那个算子只占模型 **5%** 的时间，你加速 **3 倍**，端到端只快：
+
+```
+1 / (0.95 + 0.05/3) = 1 / 0.9667 = 1.034   →  只快 3.4%
+```
+
+**所以 L2 的固定顺序是：**
+
+```
+1. 先用 nsys / torch.profiler 跑一遍模型，看时间分布
+2. 挑占比最大的那个算子
+3. 在那个上面赢
+4. 再复测端到端，用数字证明
+```
+
+**面试会问「你为什么优化这个算子」**，标准答案是：
+
+> 「profile 显示它占了这个模型 **43%** 的推理时间。」
+
+**不是**「因为它我会写」。这两句话的分量差一个数量级——前者证明你会用工具定位问题，
+后者只证明你会写 kernel。
 
 ### L3：部署链路（仅门 B）
 
