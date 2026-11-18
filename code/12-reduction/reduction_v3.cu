@@ -10,7 +10,7 @@ __global__ void reduction_v3(float* a, float* out, int N) {
     tile[threadIdx.x] = sum;
     __syncthreads();
     
-    for (int s = blockDim.x / 2;s > 32; s /= 2) {
+    for (int s = blockDim.x / 2;s >= 32; s /= 2) {
         if (threadIdx.x < s) {
             tile[threadIdx.x] += tile[threadIdx.x + s];
         }

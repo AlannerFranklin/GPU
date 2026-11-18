@@ -3,8 +3,8 @@
 constexpr int TILE = 256;
 
 __global__ void scan_v2_local(float* a, float* out, float* block_sums, int N) {
-    __shared__ float warp_sums[8];
-
+    __shared__ float warp_sums[8];                    // ← warp_last 删掉，用回它
+    __shared__ float warp_last[8];
     int lane = threadIdx.x % 32;
     int warp = threadIdx.x / 32;
 
@@ -15,14 +15,19 @@ __global__ void scan_v2_local(float* a, float* out, float* block_sums, int N) {
         if (lane >= off) x += y;
     }
     if (lane == 31) {
-        warp_sums[warp] = x;
+        warp_sums[warp] = x;                          // ← 原版是存 warp_sums
     }
     __syncthreads();
     if (threadIdx.x == 0) { float run = 0; for (int k = 0;k < 8;k++) {float t = warp_sums[k]; warp_sums[k] = run; run += t;}}
     __syncthreads();
-    x += warp_sums[warp];
+    x += warp_sums[warp];                             // ← 块内包含式
+    float prev = __shfl_up_sync(0xffffffff, x, 1);
+    if (lane == 0) prev = warp_sums[warp];
+
     if (threadIdx.x == TILE - 1) block_sums[blockIdx.x] = x;
-    out[blockIdx.x * TILE + threadIdx.x] = x;
+    out[blockIdx.x * TILE + threadIdx.x] = prev;         // ← 原版输出（错的：包含式）
+
+    //out[blockIdx.x * TILE + threadIdx.x] = x - a[blockIdx.x * TILE + threadIdx.x];
 }
 
 __global__ void scan_v1_offsets(float* block_sums, int nBlocks) {

@@ -22,7 +22,7 @@ __global__ void reduction_v6(float* a, float* out, int N) {
         sum = (lane < 8) ? warp_sums[lane] : 0.0f;
         for (int off = 4; off > 0; off /= 2)
             sum += __shfl_down_sync(0xffffffff, sum, off);
-        if (lane == 0) atomicAdd(out, sum);
+        if (lane == 0) out[blockIdx.x] = sum;
     }
 }
 
