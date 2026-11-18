@@ -211,6 +211,86 @@
 
 ---
 
+## 📦 落地阶梯（L0-L3）· 2026-11-18 增补
+
+> 解决的问题：练习代码全是「独立 exe、跑完打印 min_ms、输入是 `i % 7` 造的数据」。
+> 面试时能讲原理，但拿不出「它在真实场景里有用」的证据。
+> **这条阶梯把 kernel 从「练习」推到「能用」，四级，逐级加码。**
+
+| 级别 | 做什么 | 前置 | 证明什么 |
+|---|---|---|---|
+| **L0** | **真实 shape + 随机张量，测自己的 kernel** | 无，**现在就能做** | 你知道自己的 kernel 在什么形状下会垮 |
+| **L1** | 包成 PyTorch custom op（`torch.utils.cpp_extension`） | 一个能跑的 kernel | 不只会写 `.cu` 文件，能让它被框架调用 |
+| **L2** | 在公开模型里替换/插入一个算子，测端到端 | L1 | **这才是「落地」本身** |
+| **L3** | ONNX → TensorRT / ONNXRuntime，动态 shape、精度对齐 | L2 | 部署链路（**仅门 B 值得投资**） |
+
+### L0：真实 shape 扫描（可立即做，成本几乎为零）
+
+同一个 kernel，换输入形状，表现能差 10 倍以上：
+
+```
+(4096, 4096) × (4096, 4096)     ← 现在的基准，AI=115，compute-bound
+(128,  4096) × (4096, 4096)     ← 小 batch 预填充
+(1,    4096) × (4096, 4096)     ← LLM decode，GEMV，AI≈1.0，深度 memory-bound
+```
+
+**关键认知**：测 kernel 性能需要真实的**形状**，不需要真实的**数据**。
+`torch.randn` 或随便造的浮点数和 ImageNet 图片，在性能特征上完全等价。
+真实数据集只在验证**数值正确性**和**端到端精度**时才需要。
+
+### L1：包成 PyTorch 扩展
+
+```python
+from torch.utils.cpp_extension import load
+mymod = load(name="myops", sources=["matmul_reg8.cu"],
+             extra_cuda_cflags=["-arch=sm_89"])
+c = mymod.matmul(a, b)
+```
+
+**Windows 上的真正难点是环境不是代码**：nvcc 版本要匹配 PyTorch 轮子（`cu126` → CUDA 12.6），
+编译时 `cl.exe` 要在 PATH（先跑 `vcvars64.bat`）。绑定代码本身半天就够。
+
+### L2：替换进真实模型 —— ⚠️ 目标必须选对
+
+**不能替换 matmul。** PyTorch 的 `torch.matmul` 直接调 cuBLAS（85%+ 峰值），
+手写 kernel 打不过。**L2 的正确表述是：**
+
+> **找到 PyTorch 没做好的那个点，在那里赢。**
+> 不是「把 PyTorch 做好的地方做得更好」。
+
+| 方向 | 例子 | 为什么能赢 |
+|---|---|---|
+| **融合** | `Linear + bias + GELU` 融成一个 kernel | PyTorch 分三次跑，你省两次显存往返 |
+| **特殊 shape** | `M=1` 的 GEMV、极瘦长矩阵 | cuBLAS 的大矩阵 kernel 在这些 shape 下效率低 |
+| **attention** | FlashAttention | **最好的范例**——它就是对 PyTorch 原生 attention 的替换 |
+| **量化算子** | int8 / fp8 GEMM | PyTorch 覆盖面不全 |
+
+**面试会问「你怎么决定优化哪个算子」**，标准答案是：先 profile，看时间花在哪、
+PyTorch 在那一层效率如何——不是凭感觉挑一个自己会写的。
+
+### L3：部署链路（仅门 B）
+
+ONNX 导出 → TensorRT/ONNXRuntime → 动态 shape → 精度对齐。
+这是**部署工程师**的技能栈，门 A 的岗位（Nsight 工具、WDDM 驱动）不碰。
+
+### 与两条门的权重
+
+| | L0 | L1 | L2 | L3 |
+|---|---|---|---|---|
+| **门 A（工具/驱动/Profiler）** | ✅ | ✅ 证明工程能力 | 🟡 加分 | ⚪ 用不上 |
+| **门 B（计算/算子优化）** | ✅ | ✅ 必需 | ✅ **核心** | 🟡 加分 |
+
+### 时间安排
+
+```
+L0  第 13 周收官时顺带做（今晚就能做）
+L1  第 16 周项目一的一部分（「整理成库」时自然要做）
+L2  项目一之后 1-2 周
+L3  门 B 路线，2027 之后再考虑
+```
+
+---
+
 ## 阶段三：分叉（第 5-6 月）
 
 > ⚠️ **两条路选一条走**，不要都学。人的精力有限，贪多必失。

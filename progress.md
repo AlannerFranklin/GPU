@@ -149,6 +149,15 @@
 - [ ] README 首页有性能对比表
 - [ ] 推到 GitHub
 
+### 📦 落地阶梯（L0-L3，2026-11-18 增补，详见 [ROADMAP.md](ROADMAP.md#-落地阶梯l0-l32026-11-18-增补)）
+- [ ] **L0 真实 shape 扫描**：`matmul_reg8` 在 (4096,4096)、(128,4096)、(1,4096)
+      三种形状下的表现，记录 GFLOPS 和 AI —— **成本几乎为零，可立即做**
+- [ ] L1 包成 PyTorch custom op（`torch.utils.cpp_extension`）
+      （Windows 上的难点是 nvcc/MSVC/轮子版本匹配，不是绑定代码）
+- [ ] L2 在公开模型里替换/插入一个算子 —— **必须在 PyTorch 没做好的地方**
+      （融合 / 特殊 shape / attention / 量化），不是在它做好的 matmul 上硬拼
+- [ ] L3 ONNX → TensorRT/ONNXRuntime（**仅门 B 值得投资**）
+
 ### 🔍 M4 月末自检（决策点）
 - [ ] 闭卷手写高效归约（含 warp shuffle）
 - [ ] 闭卷手写 tiled matmul
