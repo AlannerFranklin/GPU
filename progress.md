@@ -135,6 +135,9 @@
   （v3/v6 当晚定位并修复：树归约少一步、atomicAdd 违反 harness 幂等契约）
 - [x] 前缀和 (Blelloch) 完成 —— v0（分段 Blelloch）、v1（两遍法）、v2（Hillis-Steele+warp
   shuffle）全过。v2 当晚修复"包含式 vs 排除式"错位 bug，A/B 两方案都验证通过
+- [x] **加练：scan v3（每线程 4 元素）** —— 2026-11-19 凌晨学员独立完成，
+  6 轮 review 后通过（bad_count=0，0.0143ms）。BLOCK_ELEMS=1024 常量、warp 扫总和、
+  shfl_up carry 错位全部落地
 - [ ] **能闭卷默写归约 kernel**
 
 ### 第 14 周 · 进阶主题
