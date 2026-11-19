@@ -31,6 +31,7 @@ build.bat <目录名> clean    清掉 build/
 | `13-transpose` | 矩阵转置 | naive + shared 版 | ✅ |
 | [`14-matmul`](14-matmul/) | 矩阵乘法 | **四个版本** + Roofline 瓶颈分析，内容最全 | ✅ |
 | [`15-scan`](15-scan/) | 前缀和 | Blelloch / Hillis-Steele，见目录内 README | 🔶 代码完成，数字待补 |
+| `16-histogram` | 直方图 | naive（global atomic）vs shared 版 | 🔶 代码完成，数字待补 |
 
 图例：✅ 有性能数字或已完成 ｜ 🔶 代码写完但缺实测数字 ｜ ⚪ 受阻
 
