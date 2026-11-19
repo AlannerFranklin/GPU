@@ -1,7 +1,5 @@
 #include "scan_common.h"
-
-constexpr int TILE = 256;
-constexpr int BLOCK_ELEMS = 1024;
+#include "scan_kernels.h"
 
 __global__ void scan_v3_local(float* a, float* out, float* block_sums, int N) {
     float x[4];
@@ -34,37 +32,6 @@ __global__ void scan_v3_local(float* a, float* out, float* block_sums, int N) {
     __syncthreads();
     if (threadIdx.x == TILE - 1)
         block_sums[blockIdx.x] = carry + x[3];
-}
-
-__global__ void scan_v3_offsets(float* block_sums, int nBlocks) {
-    __shared__ float tile[1024];
-    const int n = nBlocks;
-    tile[threadIdx.x] = block_sums[threadIdx.x];
-    __syncthreads();
-    for (int d = 1;d < n;d *= 2) {
-        int i = threadIdx.x * 2 * d;
-        if (i + 2 * d - 1 < n) {
-            tile[i + 2 * d - 1] += tile[i + d - 1];
-        }
-        __syncthreads();
-    }
-    if (threadIdx.x == 0) tile[n - 1] = 0;
-    __syncthreads();
-    for (int d = n / 2; d > 0;d /= 2) {
-        int i = threadIdx.x * 2 * d;
-        if (i + 2 * d - 1 < n) {
-            float t = tile[i + d - 1];
-            tile[i + d - 1] = tile[i + 2 * d - 1];
-            tile[i + 2 * d - 1] = t + tile[i + 2 * d - 1];
-        }
-        __syncthreads();
-    }
-    block_sums[threadIdx.x] = tile[threadIdx.x];
-}
-
-__global__ void scan_v3_add(float* out, float* block_sums, int N) {
-    for (int i = 0;i < 4;i++)
-        out[blockIdx.x * BLOCK_ELEMS + threadIdx.x * 4 + i] += block_sums[blockIdx.x];
 }
 
 int main(int argc, char** argv) {
@@ -103,15 +70,15 @@ int main(int argc, char** argv) {
         if (rep == 0) {
             // ← 你来写：预热，三个 kernel 各启动一次，不计时
             scan_v3_local  <<<nBlocks, TILE>>>(a_d, out_d, block_sums_d, N);
-            scan_v3_offsets<<<1, nBlocks>>>      (block_sums_d, nBlocks);
-            scan_v3_add    <<<nBlocks, TILE>>>(out_d, block_sums_d, N);
+            scan_offsets   <<<1, nBlocks>>>      (block_sums_d, nBlocks);
+            scan_add       <<<nBlocks, TILE>>>(out_d, block_sums_d, BLOCK_ELEMS);
         } else {
             // ← 你来写：Record(start) → 三个 kernel → Record(stop)
             //            → GetLastError → Synchronize → ElapsedTime → 取 min
             CUDA_CHECK(cudaEventRecord(start));
             scan_v3_local  <<<nBlocks, TILE>>>(a_d, out_d, block_sums_d, N);
-            scan_v3_offsets<<<1, nBlocks>>>      (block_sums_d, nBlocks);
-            scan_v3_add    <<<nBlocks, TILE>>>(out_d, block_sums_d, N);
+            scan_offsets   <<<1, nBlocks>>>      (block_sums_d, nBlocks);
+            scan_add       <<<nBlocks, TILE>>>(out_d, block_sums_d, BLOCK_ELEMS);
             CUDA_CHECK(cudaEventRecord(stop));
             CUDA_CHECK(cudaGetLastError());
             CUDA_CHECK(cudaEventSynchronize(stop));
