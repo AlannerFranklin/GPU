@@ -184,9 +184,11 @@ cache lab / malloc lab（讲思路即可）、所有 `notes.md` / `bottleneck.md
   指令能和等待重叠）
 
 ### 第 15 周 · 流与异步
-- [ ] 多流流水线，加速比 ______
-- [ ] CUDA Graph 版本跑通
-- [ ] 理解 PCIe 带宽瓶颈
+- [x] 多流流水线，加速比 **1.025x**（asyncEngineCount=1 → 只能拷贝↔计算重叠，
+  与预测 ≈1.03x 吻合；2026-11-20 晚 PCIe 修复后重测）
+- [x] CUDA Graph 版本跑通 —— 10.44x（launch 开销 6.8µs/次实测）
+- [x] 理解 PCIe 带宽瓶颈 —— 从 6.6 GB/s 异常 → link width=4 → 接触不良重插
+  → 恢复 26.3 GB/s 的完整闭环；多流从 0.99x 修正为 1.025x
 
 ### 第 16 周 · 🏆 项目一：kernel 库
 - [ ] 仓库建好，含 7 个 kernel
