@@ -172,8 +172,16 @@ cache lab / malloc lab（讲思路即可）、所有 `notes.md` / `bottleneck.md
       上方「📕 闭卷清单」第 1 项，按间隔重复练（不阻塞后面的周次推进）
 
 ### 第 14 周 · 进阶主题
-- [ ] histogram：naive ______ GB/s → shared 版 ______ GB/s
-- [ ] 能解释 bank conflict 和 warp divergence 的代价
+- [x] histogram：naive **15.5 GB/s** → shared 版 **585.1 GB/s = 37.7x**
+  （2026-11-19 晚实测。shared 版达 DRAM 峰值 672 GB/s 的 **87%**，基本到顶了。
+  两级台阶：naive 的随机 global atomicAdd 竞争 → shared 私有化 + grid-stride(1024 blocks)
+  + 跳过空 bin。代码见 [code/16-histogram/](code/16-histogram/)）
+- [x] 能解释 bank conflict 和 warp divergence 的代价
+  （2026-11-19 三个口头题全过：`tile[tid*2]`→2 路、`tile[tid+1]`→无冲突、
+  归约的 divergence 浪费是常数倍。
+  **实测代价**：`bank_conflict.exe` 里 `tile[tid*32]`（32 路冲突）比 `tile[tid]`
+  慢 **18.3 倍**（17.99 ms vs 0.985 ms）——理论 32 倍，差的那部分是循环里其他
+  指令能和等待重叠）
 
 ### 第 15 周 · 流与异步
 - [ ] 多流流水线，加速比 ______
