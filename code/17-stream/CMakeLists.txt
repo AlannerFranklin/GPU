@@ -28,3 +28,5 @@ add_executable(scale_v0 scale_v0.cu)
 add_executable(scale_v1 scale_v1.cu)
 
 add_executable(pcie_bench pcie_bench.cu)
+add_executable(graph_bench graph_bench.cu)
+
