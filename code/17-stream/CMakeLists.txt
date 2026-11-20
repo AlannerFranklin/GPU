@@ -27,3 +27,4 @@ set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler=\"/utf-8\"")
 add_executable(scale_v0 scale_v0.cu)
 add_executable(scale_v1 scale_v1.cu)
 
+add_executable(pcie_bench pcie_bench.cu)
