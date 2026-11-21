@@ -118,6 +118,15 @@ smsp__sass_average_data_bytes_per_sector_mem_global_op_ld.pct
 
 ---
 
+## ✅ 决策：SYCL 两项——保留，不砍（2026-11-21 学员决定）
+
+学员明确要求保留（原计划建议砍掉）。已同步到 `progress.md`：
+- 定位为「补充实验」，不占主线时间
+- 当前受阻于环境（公司无 GPU、家里无 oneAPI）
+- 解除阻塞：家里装 Intel oneAPI 用 CPU device 验证正确性，或等有 Intel 核显的机器
+
+---
+
 ## ⚠️ 优先级 6：编译链路 / 指针内存图（2026-11-21 复查，未达标）
 
 ### ① 编译链路 ⚠️（顺序错）
