@@ -145,10 +145,10 @@ cache lab / malloc lab（讲思路即可）、所有 `notes.md` / `bottleneck.md
   达到 FP32 峰值 44.1 TFLOPS 的 31%。ncu 计数器同晚已补采：`local_ld = 0`、
   `dram__bytes.sum = 4.35 GB`（N=4096）
 - [ ] SYCL 版 tiled matmul 跑通 —— **2026-11-21 决策：保留，不砍**
-  （学员明确要保留。当前受阻于环境：公司机无 GPU，家里无 oneAPI。
-  解除阻塞的两条路：① 家里装 Intel oneAPI，用 CPU device 先验证正确性；
-  ② 等接触得到 Intel 核显的机器。SYCL↔CUDA 概念对照价值已由 CUDA 侧覆盖，
-  此项定位为「补充实验」，不占主线时间）
+  （学员明确要保留。**环境更正**：公司机其实有 Intel 核显（UHD 730），
+  所以白天在公司装 oneAPI 即可执行 SYCL——此前的「公司无 GPU」指没有独显。
+  下一步：白天 AI 在公司机装 oneAPI Base Toolkit 并跑通 `01-hello-sycl`，
+  再写 SYCL 版 tiled matmul 做概念对照）
 
 ### 第 12 周 · 性能分析
 - [x] ncu 和 nsys 都装好并能出报告
