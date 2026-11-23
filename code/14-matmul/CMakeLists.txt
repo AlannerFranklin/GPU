@@ -28,4 +28,4 @@ add_executable(matmul matmul.cu)
 add_executable(matmul_tile matmul_tile.cu)
 add_executable(matmul_reg matmul_reg.cu)
 add_executable(matmul_reg8 matmul_reg8.cu)
-
+add_executable(matmul_exam matmul_exam.cu)

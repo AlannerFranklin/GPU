@@ -51,7 +51,7 @@
 | # | 项目 | 第 1 遍 | 第 2 遍 | 第 3 遍 | 备注 |
 |---|---|---|---|---|---|
 | 1 | 归约 kernel（shared 树 + warp shuffle） | 🔶 11-19 重建 | | | 首次闭卷失败，从零重建中 |
-| 2 | tiled matmul（shared memory 分块） | | | | |
+| 2 | tiled matmul（shared memory 分块） | 🔶 11-23 推导 | | | 2026-11-23：从「naive 每数据被重复读 N 次」一步步推出 tiled 设计，N=4 手算验证（naive 与 tiled 都算出 C[3][1]=484）。代码见 `code/14-matmul/matmul_exam.cu`，寄存器用量与原版一致（36 regs / 8192 smem）。⚠️ **但填 shared 的两行下标是提示后翻译的**，不是纯闭卷 → 仍需按间隔重复再考一遍 |
 | 3 | scan（Blelloch 上扫 + 下扫） | | | | |
 | 4 | 线程池（C++） | | | | 门 A 面试高频 |
 | 5 | SPSC 无锁队列（C++ 内存序） | | | | 门 A 面试高频 |
