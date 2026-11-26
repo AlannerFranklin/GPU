@@ -3,13 +3,16 @@
 #include <evntrace.h>
 #include <evntcons.h>
 #include <cstdio>
+#include <cstdlib>
 #include <vector>
 
 void WINAPI on_event(PEVENT_RECORD ev) {
 
 }
 
-int main() {
+int main(int argc, char** argv) {
+    // 存活秒数可传参（验证时可给 60，方便在另一个窗口查 logman）
+    int seconds = argc > 1 ? atoi(argv[1]) : 15;
     const wchar_t* SESSION_NAME = L"GpuMonitorSession";
 
     const int BUFSIZE = sizeof(EVENT_TRACE_PROPERTIES) + 2 * MAX_PATH * sizeof(wchar_t);
@@ -58,9 +61,20 @@ int main() {
         return 1;
     }
 
-    printf("provider enabled, 15s\n");
+    printf("provider enabled, %ds\n", seconds);
 
-    Sleep(15000);
+    // --- 自检：用 QUERY 确认会话此刻真的存在（不依赖第二个窗口的权限）---
+    // QUERY 不会修改会话，只是把当前状态填进 props
+    fill_props();
+    ULONG q = ControlTraceW(session, SESSION_NAME, props, EVENT_TRACE_CONTROL_QUERY);
+    if (q == ERROR_SUCCESS) {
+        printf("session query: RUNNING  buffers=%lu free=%lu eventsLost=%lu\n",
+               props->NumberOfBuffers, props->FreeBuffers, props->EventsLost);
+    } else {
+        printf("session query failed: %lu\n", q);
+    }
+
+    Sleep((DWORD)seconds * 1000);
 
 
     fill_props();
