@@ -7,7 +7,28 @@
 #include <vector>
 
 void WINAPI on_event(PEVENT_RECORD ev) {
+    USHORT id = ev->EventHeader.EventDescriptor.Id;   // 事件 ID
+    if (id == 1 || id == 2) {                          // 1=进程启动 2=进程退出
+        printf("%s pid=%lu\n",
+               id == 1 ? "start" : "stop",
+               ev->EventHeader.ProcessId);
+    }
+}
 
+BOOL WINAPI on_ctrl(DWORD type) {
+    if (type != CTRL_C_EVENT && type != CTRL_CLOSE_EVENT) return FALSE;
+
+    // handler 在另一个线程上跑，不能碰主线程的局部变量 —— 自己准备缓冲
+    const int BUFSIZE = sizeof(EVENT_TRACE_PROPERTIES) + 2 * MAX_PATH * sizeof(wchar_t);
+    std::vector<BYTE> buf(BUFSIZE);
+    auto* p = reinterpret_cast<EVENT_TRACE_PROPERTIES*>(buf.data());
+    ZeroMemory(p, BUFSIZE);
+    p->Wnode.BufferSize  = BUFSIZE;
+    p->LoggerNameOffset  = sizeof(EVENT_TRACE_PROPERTIES);
+
+    printf("\n[ctrl-c] stopping session...\n");
+    ControlTraceW(0, L"GpuMonitorSession", p, EVENT_TRACE_CONTROL_STOP);
+    return TRUE;
 }
 
 int main(int argc, char** argv) {
@@ -74,7 +95,29 @@ int main(int argc, char** argv) {
         printf("session query failed: %lu\n", q);
     }
 
-    Sleep((DWORD)seconds * 1000);
+        // ---- 第 4 步：接上消费者 ----
+    // 这个结构体告诉 OpenTrace「怎么消费」
+    EVENT_TRACE_LOGFILEW logfile = {};
+    logfile.LoggerName          = (LPWSTR)SESSION_NAME;   // 消费哪个会话
+    logfile.ProcessTraceMode    = PROCESS_TRACE_MODE_REAL_TIME      // 实时
+                                | PROCESS_TRACE_MODE_EVENT_RECORD;  // 新式回调
+    logfile.EventRecordCallback = on_event;               // 事件来了调谁
+
+    TRACEHANDLE trace = OpenTraceW(&logfile);
+    if (trace == INVALID_PROCESSTRACE_HANDLE) {
+        printf("OpenTrace failed: %lu\n", GetLastError());
+        fill_props();
+        ControlTraceW(session, SESSION_NAME, props, EVENT_TRACE_CONTROL_STOP);
+        return 1;
+    }
+    printf("trace opened, waiting for events...\n");
+
+    SetConsoleCtrlHandler(on_ctrl, TRUE);
+
+    ProcessTrace(&trace, 1, nullptr, nullptr);
+
+    printf("ProcessTrace returned\n");
+    CloseTrace(trace);
 
 
     fill_props();

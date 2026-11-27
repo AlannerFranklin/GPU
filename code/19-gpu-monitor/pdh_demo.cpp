@@ -27,7 +27,6 @@ int main() {
     PdhCollectQueryData(query);
     while (true) {
 
-        Sleep(1000);
         PdhCollectQueryData(query);
         PdhGetFormattedCounterArrayW(counter, PDH_FMT_DOUBLE, &bufSize, &itemCount, nullptr);
         PdhGetFormattedCounterArrayW(GPU, PDH_FMT_DOUBLE, &memBufSize, &memItemCount, nullptr);
