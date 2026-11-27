@@ -5,13 +5,46 @@
 #include <cstdio>
 #include <cstdlib>
 #include <vector>
+#include <map>
+#include <string>
+
+const wchar_t* process_name(DWORD pid, wchar_t* buf, DWORD bufSize) {
+    wcscpy_s(buf, bufSize, L"<unknown>");              // 失败时的默认值
+
+    HANDLE h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+    if (h == nullptr) return buf;                       // 打不开（System/权限）
+
+    wchar_t path[MAX_PATH] = {0};
+    DWORD   size = MAX_PATH;
+    BOOL ok = QueryFullProcessImageNameW(h, 0, path, &size);
+
+    CloseHandle(h);                                     // 成败都要关
+    if (!ok) return buf;
+
+    const wchar_t* slash = wcsrchr(path, L'\\');        // 取最后一段
+    const wchar_t* name  = slash ? slash + 1 : path;
+    wcsncpy_s(buf, bufSize, name, _TRUNCATE);
+
+    return buf;
+}
+
+static std::map<DWORD, std::wstring> g_names;   // pid → 名字
 
 void WINAPI on_event(PEVENT_RECORD ev) {
-    USHORT id = ev->EventHeader.EventDescriptor.Id;   // 事件 ID
-    if (id == 1 || id == 2) {                          // 1=进程启动 2=进程退出
-        printf("%s pid=%lu\n",
-               id == 1 ? "start" : "stop",
-               ev->EventHeader.ProcessId);
+    USHORT id = ev->EventHeader.EventDescriptor.Id;
+    DWORD  pid = ev->EventHeader.ProcessId;
+
+    if (id == 1) {                               // 启动：查一次，存起来
+        wchar_t name[64];
+        process_name(pid, name, 64);
+        g_names[pid] = name;
+        printf("start %ls (pid=%lu)\n", name, pid);
+    }
+    else if (id == 2) {                          // 退出：从表里取
+        auto it = g_names.find(pid);
+        printf("stop %ls (pid=%lu)\n",
+               it != g_names.end() ? it->second.c_str() : L"<unknown>", pid);
+        if (it != g_names.end()) g_names.erase(it);   // 清掉，防止 map 无限涨
     }
 }
 
