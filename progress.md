@@ -50,9 +50,9 @@
 
 | # | 项目 | 第 1 遍 | 第 2 遍 | 第 3 遍 | 备注 |
 |---|---|---|---|---|---|
-| 1 | 归约 kernel（shared 树 + warp shuffle） | 🔶 11-19 重建 | | | 首次闭卷失败，从零重建中 |
-| 2 | tiled matmul（shared memory 分块） | 🔶 11-23 推导 | | | 2026-11-23：从「naive 每数据被重复读 N 次」一步步推出 tiled 设计，N=4 手算验证（naive 与 tiled 都算出 C[3][1]=484）。代码见 `code/14-matmul/matmul_exam.cu`，寄存器用量与原版一致（36 regs / 8192 smem）。⚠️ **但填 shared 的两行下标是提示后翻译的**，不是纯闭卷 → 仍需按间隔重复再考一遍 |
-| 3 | scan（Blelloch 上扫 + 下扫） | | | | |
+| 1 | 归约 kernel（shared 树 + warp shuffle） | ✅ 11-20 过关 | | | 11-19 首次闭卷失败（`s > 32` 边界），重建后 rel_err=0、0.0236ms；**第 2 遍排在 12 月上旬** |
+| 2 | tiled matmul（shared memory 分块） | ✅ 11-24 过关 | | | 11-23 从「重复读 N 次」推出设计；11-24 纯闭卷重写 `matmul_closed.cu`，46.508ms vs 原版 46.440ms（差 0.15%）。**第 2 遍排在 12 月上旬** |
+| 3 | scan（Blelloch 上扫 + 下扫） | 🔶 11-18 写过 | | | v0-v3 均实现并验证，但**未做过纯闭卷重写** |
 | 4 | 线程池（C++） | | | | 门 A 面试高频 |
 | 5 | SPSC 无锁队列（C++ 内存序） | | | | 门 A 面试高频 |
 | 6 | `MyVector` / `MyString`（RAII + 移动语义） | | | | 与 M1 自检同一项 |
@@ -196,11 +196,17 @@ cache lab / malloc lab（讲思路即可）、所有 `notes.md` / `bottleneck.md
 - [x] 理解 PCIe 带宽瓶颈 —— 从 6.6 GB/s 异常 → link width=4 → 接触不良重插
   → 恢复 26.3 GB/s 的完整闭环；多流从 0.99x 修正为 1.025x
 
-### 第 16 周 · 🏆 项目一：kernel 库
-- [ ] 仓库建好，含 7 个 kernel
-- [ ] 每个 kernel 有 benchmark + ncu 截图 + 瓶颈分析
-- [ ] README 首页有性能对比表
-- [ ] 推到 GitHub
+### 第 16 周 · 🏆 项目一：kernel 库 —— ✅ 2026-11-23 完成
+- [x] 仓库建好，含 7 个 kernel ——
+      https://github.com/AlannerFranklin/cuda-kernel-optimization
+      （vector_add / reduction / scan / matmul / histogram / softmax + saxpy）
+- [x] 每个 kernel 有 benchmark + ncu 数据 + 瓶颈分析 ——
+      `docs/perf-report.md`（六课题实测）+ `docs/ncu/summary.md`（9 个 kernel 的
+      计算/DRAM 吞吐、sector 有效率）+ 原始 CSV 入库
+      （注：用文本数据而非 PNG 截图，可追溯、可复现）
+- [x] README 首页有性能对比表 —— 2026-11-24 换成统一运行的数据，
+      并写了三处自我纠正（归约 5.8x→1.76x、vector_add 11.3x→4.84x、matmul 22570→20305）
+- [x] 推到 GitHub —— 2026-11-23 推送；11-23 晚间补齐数据；11-24 白天同步
 
 ### 📦 落地阶梯（L0-L3，2026-11-18 增补，详见 [ROADMAP.md](ROADMAP.md#-落地阶梯l0-l32026-11-18-增补)）
 - [ ] **L0 真实 shape 扫描**：`matmul_reg8` 在 (4096,4096)、(128,4096)、(1,4096)
@@ -214,10 +220,13 @@ cache lab / malloc lab（讲思路即可）、所有 `notes.md` / `bottleneck.md
         （只赢 eager 不算数，面试一句「你怎么不 compile」就拆掉）
 - [ ] L3 ONNX → TensorRT/ONNXRuntime（**仅门 B 值得投资**）
 
-### 🔍 M4 月末自检（决策点）
-- [ ] 闭卷手写高效归约（含 warp shuffle）
-- [ ] 闭卷手写 tiled matmul
-- [ ] 能判断一个 kernel 是否 memory-bound 并说出改法
+### 🔍 M4 月末自检（决策点）—— ✅ 三项全过（2026-11-20 ~ 11-25）
+- [x] 闭卷手写高效归约（含 warp shuffle）—— 2026-11-20 过关：
+      `reduction_exam` rel_err=0，0.0236 ms（性能达标）
+- [x] 闭卷手写 tiled matmul —— 2026-11-24 过关：`matmul_closed.exe 4096` =
+      **46.508 ms**，与原版 46.440 ms 差 **0.15%**（性能等价，不是"及格而已"）
+- [x] 能判断一个 kernel 是否 memory-bound 并说出改法 —— 2026-11-25 过关：
+      四道判断题，「memory-bound 不是一层」（DRAM / L2 / L1 / 延迟四堵墙）已能区分
 
 **通过 → 进入阶段三。未通过 → 补 2 周。**
 
@@ -253,7 +262,29 @@ cache lab / malloc lab（讲思路即可）、所有 `notes.md` / `bottleneck.md
 >
 > **完整的变更轨迹（4 次）见 [ROADMAP.md](ROADMAP.md) 阶段三开头的「📋 决策变更日志」。**
 
-### 🅰️ 门 A 路线
+### 🔧 实际执行：第 17-18 周（2026-11-24 调整 4 后）
+
+> 原「门 A：D3D12」已被调整 4 替换，旧内容保留在下方（已作废）。
+> 新内容见 [ROADMAP.md](ROADMAP.md) 决策变更日志 #4。
+
+#### 第 17 周 · ETW + PDH 数据采集
+- [x] PDH 读 GPU 利用率（`\GPU Engine(*)\Utilization Percentage`）—— 11-25
+- [x] PDH 读显存（`\GPU Process Memory(*)\Local Usage`）—— 11-25
+- [x] pid → 进程名（`OpenProcess` + `QueryFullProcessImageNameW`）—— 11-25
+- [x] 聚合规则：**利用率取 max（比例）、显存取 sum（绝对量）** —— 11-25
+- [x] 实时刷新 + 清残字（`SetConsoleCursorPosition` + `FillConsoleOutputCharacterW`）—— 11-25
+- [x] ETW 全链路：会话开/关/清残留、启用 provider、`OpenTrace` + `ProcessTrace` 回调 —— 11-27
+- [x] ETW 进程名缓存（start 存 map、stop 查表）—— 11-27
+- [ ] pdh_demo 回补实时刷新（76 行重装版目前是一次性快照，可选）
+
+#### 第 18 周 · 进程 / 句柄 / DLL
+- [ ] 枚举进程 + 打开句柄（项目二「按进程统计」的基础）
+- [ ] 动态加载 `nvml.dll` 读 GPU 信息
+- [ ] 判断题再练 1-2 道（避开 compute-bound 模板惯性）
+
+---
+
+### 🅰️ 【已作废】门 A 路线
 
 #### 第 17-18 周 · D3D12
 - [ ] 微软官方 HelloTriangle 跑通
